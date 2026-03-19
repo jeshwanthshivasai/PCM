@@ -1,104 +1,222 @@
-import React from 'react';
-import { X, Info, Users, ChevronRight } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { X, ChevronRight, ChevronLeft, Users, Library, ScrollText } from 'lucide-react';
+import { supabase } from '../lib/supabase';
 
-const Sidebar = ({ selectedNode, onClose, surnames = [], onItemClick }) => {
-  if (!selectedNode) return null;
+const Sidebar = ({ selectedNode, allGotras = [], expandedAlpha, expandedGotra, onNavigate, onClose }) => {
+  const [view, setView] = useState('alphabet'); // 'alphabet' | 'gotras' | 'surnames'
+  const [currentAlphabet, setCurrentAlphabet] = useState(null);
+  const [currentGotra, setCurrentGotra] = useState(null);
+  const [surnames, setSurnames] = useState([]);
+  const [loading, setLoading] = useState(false);
 
-  const isGotra = selectedNode.id.startsWith('gotra-');
-  const isAlphabet = selectedNode.id.startsWith('alpha-');
-  const isRoot = selectedNode.id === 'root-bhavana-rishi';
+  // Declarative view sync
+  useEffect(() => {
+    if (expandedGotra) {
+      setCurrentAlphabet(expandedGotra.name[0].toUpperCase());
+      setCurrentGotra(expandedGotra);
+      setView('surnames');
+      
+      const fetchSurnames = async () => {
+        setLoading(true);
+        const { data: results } = await supabase.from('surnames').select('*').eq('gotra_id', expandedGotra.id);
+        setSurnames(results || []);
+        setLoading(false);
+      };
+      fetchSurnames();
+    } else if (expandedAlpha) {
+      setCurrentAlphabet(expandedAlpha);
+      setView('gotras');
+      setCurrentGotra(null);
+    } else {
+      setView('alphabet');
+      setCurrentAlphabet(null);
+      setCurrentGotra(null);
+    }
+  }, [expandedAlpha, expandedGotra]);
 
-  const listTitle = isGotra ? `Associated Families (${surnames.length})` : isAlphabet ? `Sacred Lineages in Group ${selectedNode.data.label} (${surnames.length})` : '';
+  const alphabets = useMemo(() => {
+    return [...new Set(allGotras.map(g => g.name?.[0]?.toUpperCase()).filter(Boolean))].sort();
+  }, [allGotras]);
+
+  const filteredGotras = useMemo(() => {
+    if (!currentAlphabet) return [];
+    return allGotras.filter(g => g.name?.[0]?.toUpperCase() === currentAlphabet);
+  }, [currentAlphabet, allGotras]);
+
+  const handleAlphabetClick = (char) => {
+    setCurrentAlphabet(char);
+    setView('gotras');
+    onNavigate('alphabet', char);
+  };
+
+  const handleGotraClick = async (gotra) => {
+    setCurrentGotra(gotra);
+    setLoading(true);
+    setView('surnames');
+    const { data: results } = await supabase.from('surnames').select('*').eq('gotra_id', gotra.id);
+    setSurnames(results || []);
+    setLoading(false);
+    onNavigate('gotra', gotra);
+  };
+
+  const handleBack = () => {
+    if (view === 'surnames') {
+      setView('gotras');
+      setCurrentGotra(null);
+    } else if (view === 'gotras') {
+      setView('alphabet');
+      setCurrentAlphabet(null);
+    }
+  };
 
   return (
-    <div style={{
+    <div className="sidebar-window" style={{
       width: '100%',
       height: '100%',
-      padding: '32px',
       display: 'flex',
       flexDirection: 'column',
-      gap: '24px',
-      color: 'var(--text-primary)',
-      overflowY: 'auto'
+      background: 'url("/silk_texture_dark.png") repeat',
+      backgroundSize: '200px',
     }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--silk-gold)' }}>
-          <Info size={18} />
-          <span style={{ fontWeight: 700, fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Historical Archive</span>
+      {/* Sidebar Header */}
+      <div style={{
+        padding: '24px 24px 16px 24px',
+        borderBottom: '1px solid rgba(212, 175, 55, 0.1)',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {view !== 'alphabet' && (
+            <button onClick={handleBack} style={{
+              background: 'none',
+              border: 'none',
+              color: 'var(--silk-gold)',
+              cursor: 'pointer',
+              padding: '4px',
+              display: 'flex',
+              alignItems: 'center'
+            }}>
+              <ChevronLeft size={20} />
+            </button>
+          )}
+          <span style={{ 
+            fontSize: '12px', 
+            fontWeight: 700, 
+            textTransform: 'uppercase', 
+            letterSpacing: '0.1em',
+            color: 'var(--silk-gold)',
+            opacity: 0.8
+          }}>
+            {view === 'alphabet' ? 'Lineage Groups' : view === 'gotras' ? `Alphabet ${currentAlphabet}` : currentGotra?.name}
+          </span>
         </div>
         <button onClick={onClose} style={{
-          background: 'rgba(212, 175, 55, 0.1)',
-          border: '1px solid rgba(212, 175, 55, 0.2)',
-          borderRadius: '50%',
-          width: '32px',
-          height: '32px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
+          background: 'none',
+          border: 'none',
+          color: 'rgba(255,255,255,0.4)',
           cursor: 'pointer',
-          color: 'var(--silk-gold)',
-          padding: '0'
+          padding: '4px'
         }}>
           <X size={18} />
         </button>
       </div>
 
-      <div>
-        <h2 style={{ margin: '0 0 8px 0', fontSize: '28px', fontWeight: 800, color: 'var(--pasupu)' }}>
-          {isAlphabet ? `Lineage Group ${selectedNode.data.label}` : selectedNode.data.label}
-        </h2>
-        <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '15px', lineHeight: '1.5' }}>
-          {isRoot ? 'Mula Purusha: The divine progenitor of the Padmasali weaving community.' : 
-           isAlphabet ? 'Alphabetical indexing of ancestral Gotras and lineages.' :
-           isGotra ? 'Ancient Family Gotram' : 'Traditional Surname'}
-        </p>
-      </div>
-
-      {(isGotra || isAlphabet) && (
-        <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', fontWeight: 600 }}>
-            <Users size={16} />
-            <span>{listTitle}</span>
-          </div>
-          
-          <div style={{ 
-            flex: 1, 
-            overflowY: 'auto', 
-            paddingRight: '8px',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '8px'
-          }}>
-            {surnames.map((s, idx) => (
-              <div 
-                key={idx} 
-                onClick={() => onItemClick && onItemClick(s)}
+      {/* Content Area */}
+      <div style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
+        {view === 'alphabet' && (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px' }}>
+            {alphabets.map(char => (
+              <button
+                key={char}
+                onClick={() => handleAlphabetClick(char)}
+                className="alphabet-btn"
                 style={{
-                  padding: '12px',
-                  background: 'rgba(255,255,255,0.05)',
+                  aspectRatio: '1',
+                  background: 'rgba(212, 175, 55, 0.05)',
+                  border: '1px solid rgba(212, 175, 55, 0.1)',
                   borderRadius: '12px',
-                  fontSize: '13px',
+                  color: 'var(--silk-gold)',
+                  fontSize: '18px',
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+              >
+                {char}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {view === 'gotras' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {filteredGotras.map(g => (
+              <div
+                key={g.id}
+                onClick={() => handleGotraClick(g)}
+                className="list-item"
+                style={{
+                  padding: '16px',
+                  background: 'rgba(255, 255, 255, 0.03)',
+                  border: '1px solid rgba(212, 175, 55, 0.05)',
+                  borderRadius: '12px',
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'center',
-                  cursor: 'pointer',
-                  transition: 'background 0.2s'
+                  cursor: 'pointer'
                 }}
-                onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
-                onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
               >
-                {s.name}
-                <ChevronRight size={14} opacity={0.3} />
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <Library size={16} color="var(--pasupu)" opacity={0.6} />
+                  <span style={{ fontWeight: 600 }}>{g.name}</span>
+                </div>
+                <ChevronRight size={16} opacity={0.3} />
               </div>
             ))}
-            {surnames.length === 0 && (
-              <div style={{ fontSize: '12px', color: 'var(--text-secondary)', textAlign: 'center', marginTop: '20px' }}>
-                {isAlphabet ? 'Loading Gotras...' : 'Click the node on the map to load surnames.'}
-              </div>
+          </div>
+        )}
+
+        {view === 'surnames' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <div style={{ 
+              marginBottom: '16px', 
+              padding: '12px', 
+              background: 'rgba(139, 0, 0, 0.1)', 
+              borderRadius: '8px',
+              fontSize: '13px',
+              color: 'var(--text-secondary)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}>
+              <ScrollText size={14} />
+              <span>Ancestral Surnames in {currentGotra?.name}</span>
+            </div>
+            {loading ? (
+              <div style={{ textAlign: 'center', opacity: 0.5, marginTop: '40px' }}>Loading...</div>
+            ) : (
+              surnames.map(s => (
+                <div
+                  key={s.id}
+                  style={{
+                    padding: '12px 16px',
+                    background: 'rgba(255, 255, 255, 0.02)',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    borderLeft: '2px solid var(--silk-gold)'
+                  }}
+                >
+                  {s.name}
+                </div>
+              ))
+            )}
+            {!loading && surnames.length === 0 && (
+              <div style={{ textAlign: 'center', opacity: 0.5, marginTop: '40px' }}>No records found.</div>
             )}
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 };

@@ -5,14 +5,13 @@ import ReactFlow, {
   Background, 
   Controls, 
   useReactFlow,
-  ReactFlowProvider,
-  MarkerType
+  ReactFlowProvider
 } from 'reactflow';
-import dagre from 'dagre';
 import { supabase } from '../lib/supabase';
 import { RootNode, GotraNode, SurnameNode, AlphabetNode } from './nodes/CustomNodes';
 import Sidebar from './Sidebar';
 import SearchBar from './SearchBar';
+import SilkEdge from './edges/SilkEdge';
 
 const ROOT_ID = 'root-bhavana-rishi';
 
@@ -23,43 +22,8 @@ const nodeTypes = {
   alphabet: AlphabetNode,
 };
 
-const NODE_SIZES = {
-  root: { width: 180, height: 90 },
-  alphabet: { width: 50, height: 50 },
-  gotra: { width: 200, height: 70 },
-  surname: { width: 160, height: 50 },
-};
-
-const dagreGraph = new dagre.graphlib.Graph();
-dagreGraph.setDefaultEdgeLabel(() => ({}));
-
-const getLayoutedElements = (nodes, edges, direction = 'TB') => {
-  dagreGraph.setGraph({ rankdir: direction, nodesep: 10, ranksep: 120 });
-
-  nodes.forEach((node) => {
-    const size = NODE_SIZES[node.type] || { width: 200, height: 80 };
-    dagreGraph.setNode(node.id, { width: size.width, height: size.height });
-  });
-
-  edges.forEach((edge) => {
-    dagreGraph.setEdge(edge.source, edge.target);
-  });
-
-  dagre.layout(dagreGraph);
-
-  const layoutedNodes = nodes.map((node) => {
-    const nodeWithPosition = dagreGraph.node(node.id);
-    const size = NODE_SIZES[node.type] || { width: 200, height: 80 };
-    return {
-      ...node,
-      position: {
-        x: nodeWithPosition.x - size.width / 2,
-        y: nodeWithPosition.y - size.height / 2,
-      },
-    };
-  });
-
-  return { nodes: layoutedNodes, edges };
+const edgeTypes = {
+  silk: SilkEdge,
 };
 
 const FamilyMapContent = () => {
@@ -67,273 +31,305 @@ const FamilyMapContent = () => {
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [allGotras, setAllGotras] = useState([]);
   const [selectedNode, setSelectedNode] = useState(null);
-  const [sidebarSurnames, setSidebarSurnames] = useState([]);
+  const [expandedAlpha, setExpandedAlpha] = useState(null);
+  const [expandedGotra, setExpandedGotra] = useState(null);
+  
   const { setCenter, fitView } = useReactFlow();
 
-  // Load Initial Data (Root + Alphabet Groups)
+  // Load Initial Data
   useEffect(() => {
     const fetchInitialData = async () => {
       const { data: gotras, error } = await supabase.from('gotras').select('*').order('name');
       if (error) return;
       setAllGotras(gotras);
+    };
+    fetchInitialData();
+  }, []);
 
-      // Create unique alphabet groups from Gotra names with defensive check
-      const alphabetGroups = [...new Set(
-        gotras
-          .map(g => g.name?.[0]?.toUpperCase())
-          .filter(Boolean)
+  // Declarative Graph Rebuild Effect
+  useEffect(() => {
+    const rebuildGraph = async () => {
+      if (allGotras.length === 0) return;
+
+      const alphabetChars = [...new Set(
+        allGotras.map(g => g.name?.[0]?.toUpperCase()).filter(Boolean)
       )].sort();
 
-      const initialNodes = [
-        {
-          id: ROOT_ID,
-          type: 'root',
-          data: { label: 'Bhavana Rishi' },
+      // Implement requested 9-1-9 split with 'K' in the middle
+      const kIndex = alphabetChars.indexOf('K');
+      let leftWing = [];
+      let midChar = null;
+      let rightWing = [];
+
+      if (kIndex !== -1) {
+        leftWing = alphabetChars.slice(0, kIndex);
+        midChar = 'K';
+        rightWing = alphabetChars.slice(kIndex + 1);
+      } else {
+        // Fallback to normal split if K isn't found
+        const midIndex = Math.ceil(alphabetChars.length / 2);
+        leftWing = alphabetChars.slice(0, midIndex);
+        rightWing = alphabetChars.slice(midIndex);
+      }
+
+      // BASE NODES: Root
+      let nextNodes = [
+        { 
+          id: ROOT_ID, 
+          type: 'root', 
+          data: { label: 'Bhavana Rishi' }, 
           position: { x: 0, y: 0 },
-        },
-        ...alphabetGroups.map((char) => ({
+          origin: [0.5, 0.5] // Position by center
+        }
+      ];
+      let nextEdges = [];
+
+      // HELPER: Fixed position for Alphabets (Tight gap in center)
+      // HELPER: Fixed position for Alphabets (Centered midChar, symmetric wings)
+      const getAlphaPos = (char, index, side) => {
+        const spacing = 100; // Improved spacing
+        const verticalOffset = 300; // Increased as requested
+        
+        if (side === 'mid') return { x: 0, y: verticalOffset };
+        
+        // Exact symmetrical math: K is 0, J is -100, M is +100
+        return { 
+          x: side === 'left' 
+            ? (index - leftWing.length) * spacing 
+            : (index + 1) * spacing, 
+          y: verticalOffset 
+        };
+      };
+
+      // Add Alphabets (Left Wing)
+      leftWing.forEach((char, i) => {
+        const pos = getAlphaPos(char, i, 'left');
+        nextNodes.push({
           id: `alpha-${char}`,
           type: 'alphabet',
-          data: { label: char },
-          position: { x: 0, y: 0 },
-        }))
-      ];
+          data: { label: char, expanded: expandedAlpha === char },
+          position: pos,
+          origin: [0.5, 0.5],
+          draggable: false
+        });
+        nextEdges.push({
+          id: `e-root-alpha-${char}`,
+          source: ROOT_ID,
+          target: `alpha-${char}`,
+          type: 'silk',
+          style: { stroke: 'var(--silk-gold)', strokeWidth: 1.5 }
+        });
+      });
 
-      const initialEdges = alphabetGroups.map((char) => ({
-        id: `e-${ROOT_ID}-alpha-${char}`,
-        source: ROOT_ID,
-        target: `alpha-${char}`,
-        type: 'smoothstep',
-        animated: false,
-        className: 'silk-thread',
-        style: { stroke: 'var(--silk-gold)', strokeWidth: 1.5 }
-      }));
+      // Add Middle Char (K)
+      if (midChar) {
+        const pos = getAlphaPos(midChar, 0, 'mid');
+        nextNodes.push({
+          id: `alpha-${midChar}`,
+          type: 'alphabet',
+          data: { label: midChar, expanded: expandedAlpha === midChar },
+          position: pos,
+          origin: [0.5, 0.5],
+          draggable: false
+        });
+        nextEdges.push({
+          id: `e-root-alpha-${midChar}`,
+          source: ROOT_ID,
+          target: `alpha-${midChar}`,
+          type: 'silk',
+          straight: true, // Specifically request straight line
+          style: { stroke: 'var(--silk-gold)', strokeWidth: 1.5 }
+        });
+      }
 
-      const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(initialNodes, initialEdges);
-      setNodes(layoutedNodes);
-      setEdges(layoutedEdges);
-      
-      setTimeout(() => fitView({ padding: 0.2 }), 200);
-    };
+      // Add Alphabets (Right Wing)
+      rightWing.forEach((char, i) => {
+        const pos = getAlphaPos(char, i, 'right');
+        nextNodes.push({
+          id: `alpha-${char}`,
+          type: 'alphabet',
+          data: { label: char, expanded: expandedAlpha === char },
+          position: pos,
+          origin: [0.5, 0.5],
+          draggable: false
+        });
+        nextEdges.push({
+          id: `e-root-alpha-${char}`,
+          source: ROOT_ID,
+          target: `alpha-${char}`,
+          type: 'silk',
+          style: { stroke: 'var(--silk-gold)', strokeWidth: 1.5 }
+        });
+      });
 
-    fetchInitialData();
-  }, [fitView, setNodes, setEdges]);
+      // EXPAND ALPHABET: Horizontal spread
+      if (expandedAlpha) {
+        const matchingGotras = allGotras.filter(g => g.name?.[0]?.toUpperCase() === expandedAlpha);
+        const aNode = nextNodes.find(n => n.id === `alpha-${expandedAlpha}`);
 
-  const expandAlphabet = useCallback((char) => {
-    const alphaNodeId = `alpha-${char}`;
-    
-    setNodes((currentNodes) => {
-      // AUTO-COLLAPSE: Remove all gotras and surnames, reset all alphabets to closed
-      const baseNodes = currentNodes
-        .filter(n => n.id === ROOT_ID || n.id.startsWith('alpha-'))
-        .map(n => n.id.startsWith('alpha-') 
-          ? { ...n, data: { ...n.data, expanded: n.id === alphaNodeId } } 
-          : n);
+        const isSmallGroup = matchingGotras.length < 5;
+        const gotraSpacing = isSmallGroup ? 140 : 220; // Tighter for small groups
+        const totalGotraWidth = (matchingGotras.length - 1) * gotraSpacing;
+        const startX = aNode.position.x - (totalGotraWidth / 2);
 
-      const alphaNode = baseNodes.find(n => n.id === alphaNodeId);
-      if (!alphaNode) return currentNodes;
-
-      setEdges((currentEdges) => {
-        // Clear all edges that aren't Root->Alphabet
-        const baseEdges = currentEdges.filter(e => e.source === ROOT_ID);
-        
-        const matchingGotras = allGotras.filter(g => g.name?.[0]?.toUpperCase() === char);
-        
-        const newNodes = matchingGotras.map((g) => ({
+        nextNodes.push(...matchingGotras.map((g, i) => ({
           id: `gotra-${g.id}`,
           type: 'gotra',
-          data: { label: g.name, gotraId: g.id },
-          position: { x: alphaNode.position.x, y: alphaNode.position.y },
-        }));
+          data: { label: g.name, gotraId: g.id, expanded: expandedGotra?.id === g.id },
+          position: { 
+            x: startX + (i * gotraSpacing), 
+            y: aNode.position.y + 200 
+          },
+          origin: [0.5, 0.5]
+        })));
 
-        const newEdges = matchingGotras.map((g) => ({
-          id: `e-${alphaNodeId}-gotra-${g.id}`,
-          source: alphaNodeId,
+        nextEdges.push(...matchingGotras.map(g => ({
+          id: `e-alpha-${expandedAlpha}-gotra-${g.id}`,
+          source: `alpha-${expandedAlpha}`,
           target: `gotra-${g.id}`,
-          type: 'smoothstep',
-          className: 'silk-thread',
-          style: { stroke: 'var(--silk-gold)', strokeWidth: 1.5 }
-        }));
+          type: 'silk',
+          // Auto-straighten if single child
+          straight: matchingGotras.length === 1,
+          style: { stroke: 'var(--silk-gold)', strokeWidth: 1.2 }
+        })));
 
-        const intermediateNodes = [...baseNodes, ...newNodes];
-        const intermediateEdges = [...baseEdges, ...newEdges];
+        // EXPAND GOTRA: Horizontal spread for surnames
+        if (expandedGotra && expandedGotra.name?.[0]?.toUpperCase() === expandedAlpha) {
+          const { data: surnames } = await supabase
+            .from('surnames')
+            .select('*')
+            .eq('gotra_id', expandedGotra.id);
 
-        const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(intermediateNodes, intermediateEdges);
-        
-        setTimeout(() => {
-          setNodes(layoutedNodes);
-          setEdges(layoutedEdges);
-          // Auto-focus on the expanded letter
-          setCenter(alphaNode.position.x + 25, alphaNode.position.y + 100, { zoom: 0.8, duration: 800 });
-        }, 0);
+          if (surnames && surnames.length > 0) {
+            const gNode = nextNodes.find(n => n.id === `gotra-${expandedGotra.id}`);
+            if (gNode) {
+              const isSmallGroup = surnames.length < 5;
+              const surSpacing = isSmallGroup ? 120 : 160;
+              const totalSurWidth = (surnames.length - 1) * surSpacing;
+              const surStartX = gNode.position.x - (totalSurWidth / 2);
 
-        return currentEdges;
-      });
-      return currentNodes;
-    });
-  }, [allGotras, setNodes, setEdges, setCenter]);
+              nextNodes.push(...surnames.map((s, i) => ({
+                id: `surname-${s.id}`,
+                type: 'surname',
+                data: { label: s.name },
+                position: { 
+                  x: surStartX + (i * surSpacing), 
+                  y: gNode.position.y + 150
+                },
+                origin: [0.5, 0.5]
+              })));
 
-  const expandGotra = useCallback(async (gotraId, gotraNodeId) => {
-    const { data: surnames, error } = await supabase
-      .from('surnames')
-      .select('*')
-      .eq('gotra_id', gotraId);
+              nextEdges.push(...surnames.map(s => ({
+                id: `e-gotra-${expandedGotra.id}-surname-${s.id}`,
+                source: `gotra-${expandedGotra.id}`,
+                target: `surname-${s.id}`,
+                type: 'silk',
+                straight: surnames.length === 1,
+                style: { stroke: 'var(--silk-gold)', strokeWidth: 1 }
+              })));
+            }
+          }
+        }
+      }
 
-    if (error || !surnames) return [];
+      setNodes(nextNodes);
+      setEdges(nextEdges);
 
-    setNodes((currentNodes) => {
-      // AUTO-COLLAPSE: Remove other surnames, reset other gotras
-      const baseNodes = currentNodes
-        .filter(n => !n.id.startsWith('surname-'))
-        .map(n => n.id.startsWith('gotra-')
-          ? { ...n, data: { ...n.data, expanded: n.id === gotraNodeId } }
-          : n);
+      // Animation & View Sync
+      if (expandedGotra) {
+        const targetNode = nextNodes.find(n => n.id === `gotra-${expandedGotra.id}`);
+        if (targetNode) setCenter(targetNode.position.x, targetNode.position.y + 100, { zoom: 0.7, duration: 1000 });
+      } else if (expandedAlpha) {
+        const targetNode = nextNodes.find(n => n.id === `alpha-${expandedAlpha}`);
+        if (targetNode) setCenter(targetNode.position.x, targetNode.position.y + 200, { zoom: 0.8, duration: 1000 });
+      } else {
+        fitView({ padding: 0.2, duration: 800 });
+      }
+    };
 
-      const gotraNode = baseNodes.find(n => n.id === gotraNodeId);
-      if (!gotraNode) return currentNodes;
-
-      setEdges((currentEdges) => {
-        // Remove existing gotra->surname edges
-        const baseEdges = currentEdges.filter(e => !e.id.includes('surname-'));
-
-        const newNodes = surnames.map((s) => ({
-          id: `surname-${s.id}`,
-          type: 'surname',
-          data: { label: s.name },
-          position: { x: gotraNode.position.x, y: gotraNode.position.y },
-        }));
-
-        const newEdges = surnames.map((s) => ({
-          id: `e-${gotraNodeId}-surname-${s.id}`,
-          source: gotraNodeId,
-          target: `surname-${s.id}`,
-          type: 'smoothstep',
-          className: 'silk-thread',
-          style: { stroke: 'var(--silk-gold)', strokeWidth: 1 }
-        }));
-
-        const intermediateNodes = [...baseNodes, ...newNodes];
-        const intermediateEdges = [...baseEdges, ...newEdges];
-
-        const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(intermediateNodes, intermediateEdges);
-        
-        setTimeout(() => {
-          setNodes(layoutedNodes);
-          setEdges(layoutedEdges);
-        }, 0);
-
-        return currentEdges;
-      });
-      return currentNodes;
-    });
-
-    return surnames;
-  }, [setNodes, setEdges]);
+    rebuildGraph();
+  }, [allGotras, expandedAlpha, expandedGotra, setNodes, setEdges, setCenter, fitView]);
 
   const onSearchResultSelect = useCallback(async (item) => {
-    console.log('Search item selected:', item);
     if (item.type === 'gotra') {
       const char = item.name[0].toUpperCase();
-      expandAlphabet(char);
-      
-      // Give more time for Dagre to finish and React to commit
-      setTimeout(() => {
-        setNodes(nds => {
-          const gNodeId = `gotra-${item.id}`;
-          const gNode = nds.find(n => n.id === gNodeId);
-          console.log('Searching for gNode:', gNodeId, !!gNode);
-          if (gNode) {
-            setCenter(gNode.position.x + 80, gNode.position.y + 35, { zoom: 1.5, duration: 1000 });
-            setSelectedNode(gNode);
-            expandGotra(item.id, gNodeId).then(surnames => setSidebarSurnames(surnames));
-          }
-          return nds;
-        });
-      }, 800);
+      setExpandedAlpha(char);
+      setExpandedGotra({ id: item.id, name: item.name });
     } else if (item.type === 'surname') {
-      const { data: gotra } = await supabase.from('gotras').select('name').eq('id', item.gotra_id).single();
+      const { data: gotra } = await supabase.from('gotras').select('*').eq('id', item.gotra_id).single();
       if (gotra) {
-        const char = gotra.name[0].toUpperCase();
-        const gotraNodeId = `gotra-${item.gotra_id}`;
-        
-        expandAlphabet(char);
-        setTimeout(async () => {
-          const surnames = await expandGotra(item.gotra_id, gotraNodeId);
-          setSidebarSurnames(surnames);
-          
-          setTimeout(() => {
-            setNodes(nds => {
-              const sNodeId = `surname-${item.id}`;
-              const sNode = nds.find(n => n.id === sNodeId);
-              console.log('Searching for sNode:', sNodeId, !!sNode);
-              if (sNode) {
-                setCenter(sNode.position.x + 80, sNode.position.y + 25, { zoom: 1.8, duration: 1000 });
-                setSelectedNode(sNode);
-              }
-              return nds;
-            });
-          }, 800);
-        }, 800);
+        setExpandedAlpha(gotra.name[0].toUpperCase());
+        setExpandedGotra({ id: gotra.id, name: gotra.name });
       }
     }
-  }, [expandAlphabet, expandGotra, setCenter, setNodes]);
+  }, []);
 
-  const onNodeClick = useCallback(async (event, node) => {
+  const onNodeClick = useCallback((event, node) => {
     setSelectedNode(node);
     if (node.id.startsWith('alpha-')) {
       const char = node.data.label;
-      expandAlphabet(char);
-      const matchingGotras = allGotras.filter(g => g.name[0].toUpperCase() === char);
-      setSidebarSurnames(matchingGotras.map(g => ({ name: g.name, id: g.id })));
+      setExpandedAlpha(prev => prev === char ? null : char);
+      setExpandedGotra(null);
     } else if (node.id.startsWith('gotra-')) {
-      const surnames = await expandGotra(node.data.gotraId, node.id);
-      setSidebarSurnames(surnames);
-    } else {
-      setSidebarSurnames([]);
+      const gId = node.data.gotraId;
+      setExpandedGotra(prev => prev?.id === gId ? null : { id: gId, name: node.data.label });
     }
-  }, [expandAlphabet, expandGotra, allGotras]);
+  }, []);
 
-  const onSidebarItemClick = useCallback(async (item) => {
-    if (selectedNode?.id?.startsWith('alpha-')) {
-      const char = selectedNode.data.label;
-      const nodeId = `gotra-${item.id}`;
-      expandAlphabet(char);
-
-      setTimeout(async () => {
-        setNodes(nds => {
-          const gNode = nds.find(n => n.id === nodeId);
-          console.log('Sidebar gotra jump:', nodeId, !!gNode);
-          if (gNode) {
-            setCenter(gNode.position.x + 80, gNode.position.y + 35, { zoom: 1.5, duration: 1000 });
-            setSelectedNode(gNode);
-            expandGotra(item.id, gNode.id).then(surnames => setSidebarSurnames(surnames));
-          }
-          return nds;
-        });
-      }, 800);
-    } else if (selectedNode?.id?.startsWith('gotra-')) {
-      const sNodeId = `surname-${item.id}`;
-      setNodes(nds => {
-        const sNode = nds.find(n => n.id === sNodeId);
-        if (sNode) {
-          setCenter(sNode.position.x + 80, sNode.position.y + 25, { zoom: 1.5, duration: 800 });
-          setSelectedNode(sNode);
-          setSidebarSurnames([]);
-        }
-        return nds;
-      });
+  const onSidebarNavigation = useCallback((type, value) => {
+    if (type === 'alphabet') {
+      setExpandedAlpha(value);
+      setExpandedGotra(null);
+    } else if (type === 'gotra') {
+      setExpandedAlpha(value.name[0].toUpperCase());
+      setExpandedGotra({ id: value.id, name: value.name });
     }
-  }, [selectedNode, expandAlphabet, expandGotra, setCenter, setNodes]);
+  }, []);
 
   return (
-    <div style={{ width: '100%', height: '100%', display: 'flex', overflow: 'hidden' }}>
-      <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
-        <SearchBar onSelect={onSearchResultSelect} />
-        
+    <div className="bento-layout" style={{ 
+      width: '100%', 
+      height: '100%', 
+      display: 'grid', 
+      gridTemplateColumns: '1fr 380px', 
+      gridTemplateRows: 'auto 1fr',
+      padding: '24px',
+      gap: '24px',
+      boxSizing: 'border-box',
+      overflow: 'hidden',
+      position: 'relative'
+    }}>
+      {/* Bento 1: Header/Branding */}
+      <div className="window-pane bento-title" style={{ gridColumn: '1', gridRow: '1', padding: '24px', position: 'relative' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <h1 className="traditional-title" style={{ margin: 0, fontSize: '28px', color: 'var(--pasupu)' }}>
+              Padmasali Family Network
+            </h1>
+            <p style={{ margin: '8px 0 0 0', color: 'var(--text-secondary)', fontSize: '14px', maxWidth: '600px' }}>
+              Sacred lineages and ancestral Gotras of the Padmasali weaving community.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Bento 2: Network Map */}
+      <div className="window-pane bento-map" style={{ gridColumn: '1', gridRow: '2', position: 'relative', overflow: 'hidden' }}>
+        {/* Floating Search Bar */}
+        <div style={{ 
+          position: 'absolute', 
+          top: '20px', 
+          right: '20px', 
+          zIndex: 1000 
+        }}>
+          <SearchBar onSelect={onSearchResultSelect} />
+        </div>
+
         <ReactFlow
           nodes={nodes}
           edges={edges}
           nodeTypes={nodeTypes}
+          edgeTypes={edgeTypes}
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onNodeClick={onNodeClick}
@@ -341,38 +337,39 @@ const FamilyMapContent = () => {
           nodesDraggable={false}
           nodesConnectable={false}
           elementsSelectable={true}
+          nodeOrigin={[0.5, 0.5]} // Crucial: position all nodes by center
           fitView
           fitViewOptions={{ padding: 0.2 }}
         >
-          <Background color="rgba(255,255,255,0.05)" gap={20} />
+          <Background color="transparent" />
           <Controls />
         </ReactFlow>
       </div>
 
-      {selectedNode && (
-        <div style={{ 
-          width: '380px', 
-          height: '100%', 
-          borderLeft: '1px solid rgba(212, 175, 55, 0.2)',
-          background: 'rgba(10, 8, 6, 0.95)',
-          zIndex: 100,
-          position: 'relative'
-        }}>
-          <Sidebar 
-            selectedNode={selectedNode} 
-            onClose={() => setSelectedNode(null)} 
-            surnames={sidebarSurnames}
-            onItemClick={onSidebarItemClick}
-          />
-        </div>
-      )}
+      {/* Bento 3: Persistent Sidebar */}
+      <div className="window-pane bento-sidebar" style={{ gridColumn: '2', gridRow: '1 / span 2' }}>
+        <Sidebar 
+          selectedNode={selectedNode} 
+          allGotras={allGotras}
+          expandedAlpha={expandedAlpha}
+          expandedGotra={expandedGotra}
+          onNavigate={onSidebarNavigation}
+          onClose={() => {
+            setSelectedNode(null);
+            setExpandedAlpha(null);
+            setExpandedGotra(null);
+          }}
+        />
+      </div>
     </div>
   );
 };
 
 const FamilyMap = () => (
   <ReactFlowProvider>
-    <FamilyMapContent />
+    <div style={{ width: '100vw', height: '100vh', background: 'var(--earth-bg)' }}>
+      <FamilyMapContent />
+    </div>
   </ReactFlowProvider>
 );
 

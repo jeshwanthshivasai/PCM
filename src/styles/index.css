@@ -26,19 +26,66 @@ html, body, #root {
   letter-spacing: 0.01em;
 }
 
-/* Glassmorphism Utility */
-.glass {
-  background: rgba(10, 8, 6, 0.85);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+/* Window System */
+.window-pane {
+  background: rgba(10, 8, 6, 0.6);
+  backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
   border: 1px solid rgba(212, 175, 55, 0.2);
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+  border-radius: 24px;
+  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.9), inset 0 0 40px rgba(212, 175, 55, 0.03);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  background-image: url("https://www.transparenttextures.com/patterns/dark-leather.png"); /* Subtle authentic texture */
+}
+
+.window-pane:hover {
+  border-color: rgba(212, 175, 55, 0.4);
+}
+
+.bento-title {
+  overflow: visible !important;
+}
+
+.traditional-title {
+  font-family: 'Outfit', serif;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: linear-gradient(135deg, var(--pasupu) 0%, var(--silk-gold) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Sidebar Specifics */
+.alphabet-btn:hover {
+  background: rgba(212, 175, 55, 0.1) !important;
+  transform: scale(1.05);
+  box-shadow: 0 0 20px rgba(212, 175, 55, 0.2);
+}
+
+.list-item:hover {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-color: rgba(212, 175, 55, 0.2) !important;
+  transform: translateX(4px);
+}
+
+/* Silk Thread Animation */
+.silk-thread-organic {
+  stroke-dasharray: 1000;
+  stroke-dashoffset: 1000;
+  animation: drawLine 2s ease-out forwards;
+}
+
+@keyframes drawLine {
+  to { stroke-dashoffset: 0; }
 }
 
 /* React Flow Overrides */
 .react-flow__background {
-  background-image: radial-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 0);
-  background-size: 60px 60px;
+  background-image: radial-gradient(rgba(212, 175, 55, 0.08) 1.5px, transparent 0);
+  background-size: 50px 50px;
 }
 
 .react-flow__edge-path {

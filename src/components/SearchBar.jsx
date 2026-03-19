@@ -58,12 +58,10 @@ const SearchBar = ({ onSelect }) => {
 
   return (
     <div ref={searchRef} style={{
-      position: 'absolute',
-      top: 40,
-      left: '50%',
-      transform: 'translateX(-50%)',
+      position: 'relative',
       zIndex: 200,
       width: '400px',
+      pointerEvents: 'auto'
     }}>
       <div className="glass" style={{
         borderRadius: '20px',
@@ -72,7 +70,8 @@ const SearchBar = ({ onSelect }) => {
         alignItems: 'center',
         gap: '12px',
         border: '1px solid rgba(255,255,255,0.1)',
-        boxShadow: '0 20px 40px rgba(0,0,0,0.4)'
+        boxShadow: '0 20px 40px rgba(0,0,0,0.4)',
+        background: 'rgba(20, 18, 15, 0.8)'
       }}>
         {loading ? <Loader2 className="animate-spin" size={20} color="var(--accent)" /> : <Search size={20} color="var(--text-secondary)" />}
         <input
@@ -99,12 +98,19 @@ const SearchBar = ({ onSelect }) => {
 
       {showResults && results.length > 0 && (
         <div className="glass" style={{
+          position: 'absolute',
+          top: '100%',
+          left: 0,
+          right: 0,
           marginTop: '8px',
           borderRadius: '20px',
           overflow: 'hidden',
           maxHeight: '400px',
           overflowY: 'auto',
           border: '1px solid rgba(255,255,255,0.1)',
+          background: 'rgba(20, 18, 15, 0.98)',
+          backdropFilter: 'blur(20px)',
+          boxShadow: '0 20px 60px rgba(0,0,0,0.8)'
         }}>
           {results.map((item) => (
             <button
