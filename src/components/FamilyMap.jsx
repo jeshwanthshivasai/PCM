@@ -288,19 +288,13 @@ const FamilyMapContent = () => {
 
   return (
     <div className="bento-layout" style={{ 
-      width: '100%', 
-      height: '100%', 
-      display: 'grid', 
-      gridTemplateColumns: '1fr 380px', 
-      gridTemplateRows: 'auto 1fr',
       padding: '24px',
-      gap: '24px',
       boxSizing: 'border-box',
-      overflow: 'hidden',
+      background: 'transparent',
       position: 'relative'
     }}>
       {/* Bento 1: Header/Branding */}
-      <div className="window-pane bento-title" style={{ gridColumn: '1', gridRow: '1', padding: '24px', position: 'relative' }}>
+      <div className="window-pane bento-title" style={{ padding: '24px', position: 'relative' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             <h1 className="traditional-title" style={{ margin: 0, fontSize: '28px', color: 'var(--pasupu)' }}>
@@ -314,7 +308,7 @@ const FamilyMapContent = () => {
       </div>
 
       {/* Bento 2: Network Map */}
-      <div className="window-pane bento-map" style={{ gridColumn: '1', gridRow: '2', position: 'relative', overflow: 'hidden' }}>
+      <div className="window-pane bento-map" style={{ position: 'relative', overflow: 'hidden' }}>
         {/* Floating Search Bar */}
         <div style={{ 
           position: 'absolute', 
@@ -347,7 +341,7 @@ const FamilyMapContent = () => {
       </div>
 
       {/* Bento 3: Persistent Sidebar */}
-      <div className="window-pane bento-sidebar" style={{ gridColumn: '2', gridRow: '1 / span 2' }}>
+      <div className="window-pane bento-sidebar">
         <Sidebar 
           selectedNode={selectedNode} 
           allGotras={allGotras}
