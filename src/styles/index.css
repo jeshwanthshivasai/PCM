@@ -2,14 +2,13 @@
 @import 'reactflow/dist/style.css';
 
 :root {
-  --root-gradient: linear-gradient(135deg, #ff0077 0%, #ff4d00 100%);
-  --gotra-gradient: linear-gradient(135deg, #00d4ff 0%, #0099ff 100%);
-  --surname-bg: rgba(255, 255, 255, 0.05);
-  --glass-bg: rgba(255, 255, 255, 0.03);
-  --glass-border: rgba(255, 255, 255, 0.1);
-  --text-primary: #ffffff;
-  --text-secondary: rgba(255, 255, 255, 0.6);
-  --accent: #ff0077;
+  --kumkum: #8b0000;
+  --pasupu: #ffc300;
+  --silk-gold: #d4af37;
+  --earth-bg: #0a0806;
+  --text-primary: #fdf5e6;
+  --text-secondary: rgba(253, 245, 230, 0.6);
+  --accent: var(--silk-gold);
 }
 
 html, body, #root {
@@ -18,19 +17,22 @@ html, body, #root {
   width: 100%;
   height: 100%;
   overflow: hidden;
-  background-color: #050505;
+  background-color: var(--earth-bg);
+  background-image: url('/weaver_pattern.png');
+  background-size: 400px;
+  background-repeat: repeat;
   color: var(--text-primary);
   font-family: 'Outfit', sans-serif;
-  letter-spacing: -0.02em;
+  letter-spacing: 0.01em;
 }
 
 /* Glassmorphism Utility */
 .glass {
-  background: rgba(15, 15, 15, 0.7);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid var(--glass-border);
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.8);
+  background: rgba(10, 8, 6, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(212, 175, 55, 0.2);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
 }
 
 /* React Flow Overrides */
@@ -40,8 +42,16 @@ html, body, #root {
 }
 
 .react-flow__edge-path {
-  stroke: rgba(255, 255, 255, 0.1);
-  stroke-width: 1.5px;
+  stroke: var(--silk-gold);
+  stroke-width: 1px;
+  opacity: 0.4;
+  filter: drop-shadow(0 0 2px rgba(212, 175, 55, 0.2));
+}
+
+.react-flow__edge-path.silk-thread {
+  stroke-width: 1.2px;
+  stroke-dasharray: none;
+  opacity: 0.6;
 }
 
 .react-flow__controls {
@@ -76,13 +86,12 @@ html, body, #root {
 }
 
 .custom-node-container {
-  padding: 12px 20px;
   border-radius: 16px;
-  min-width: 140px;
   transition: all 0.3s cubic-bezier(0.23, 1, 0.32, 1);
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 4px;
 }
 

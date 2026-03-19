@@ -1,16 +1,16 @@
-import React, { useEffect, useMemo, useCallback, useState } from 'react';
+import React, { useEffect, useCallback, useState } from 'react';
 import ReactFlow, { 
   useNodesState, 
   useEdgesState, 
   Background, 
   Controls, 
-  MarkerType,
   useReactFlow,
-  ReactFlowProvider
+  ReactFlowProvider,
+  MarkerType
 } from 'reactflow';
-import * as d3 from 'd3-force';
+import dagre from 'dagre';
 import { supabase } from '../lib/supabase';
-import { RootNode, GotraNode, SurnameNode } from './nodes/CustomNodes';
+import { RootNode, GotraNode, SurnameNode, AlphabetNode } from './nodes/CustomNodes';
 import Sidebar from './Sidebar';
 import SearchBar from './SearchBar';
 
@@ -20,87 +20,152 @@ const nodeTypes = {
   root: RootNode,
   gotra: GotraNode,
   surname: SurnameNode,
+  alphabet: AlphabetNode,
+};
+
+const NODE_SIZES = {
+  root: { width: 180, height: 90 },
+  alphabet: { width: 50, height: 50 },
+  gotra: { width: 200, height: 70 },
+  surname: { width: 160, height: 50 },
+};
+
+const dagreGraph = new dagre.graphlib.Graph();
+dagreGraph.setDefaultEdgeLabel(() => ({}));
+
+const getLayoutedElements = (nodes, edges, direction = 'TB') => {
+  dagreGraph.setGraph({ rankdir: direction, nodesep: 10, ranksep: 120 });
+
+  nodes.forEach((node) => {
+    const size = NODE_SIZES[node.type] || { width: 200, height: 80 };
+    dagreGraph.setNode(node.id, { width: size.width, height: size.height });
+  });
+
+  edges.forEach((edge) => {
+    dagreGraph.setEdge(edge.source, edge.target);
+  });
+
+  dagre.layout(dagreGraph);
+
+  const layoutedNodes = nodes.map((node) => {
+    const nodeWithPosition = dagreGraph.node(node.id);
+    const size = NODE_SIZES[node.type] || { width: 200, height: 80 };
+    return {
+      ...node,
+      position: {
+        x: nodeWithPosition.x - size.width / 2,
+        y: nodeWithPosition.y - size.height / 2,
+      },
+    };
+  });
+
+  return { nodes: layoutedNodes, edges };
 };
 
 const FamilyMapContent = () => {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  const [allGotras, setAllGotras] = useState([]);
   const [selectedNode, setSelectedNode] = useState(null);
   const [sidebarSurnames, setSidebarSurnames] = useState([]);
-  const { setCenter, zoomTo } = useReactFlow();
+  const { setCenter, fitView } = useReactFlow();
 
-  // Initialize nodes and edges
+  // Load Initial Data (Root + Alphabet Groups)
   useEffect(() => {
     const fetchInitialData = async () => {
-      const rootNode = {
-        id: ROOT_ID,
-        type: 'root',
-        data: { label: 'Bhavana Rishi' },
-        position: { x: 0, y: -400 },
-      };
-
-      const { data: gotras, error } = await supabase.from('gotras').select('*');
+      const { data: gotras, error } = await supabase.from('gotras').select('*').order('name');
       if (error) return;
+      setAllGotras(gotras);
 
-      const gotraNodes = gotras.map((g, idx) => ({
-        id: `gotra-${g.id}`,
-        type: 'gotra',
-        data: { label: g.name, gotraId: g.id },
-        position: { x: (idx - gotras.length/2) * 200, y: 0 },
-      }));
+      // Create unique alphabet groups from Gotra names with defensive check
+      const alphabetGroups = [...new Set(
+        gotras
+          .map(g => g.name?.[0]?.toUpperCase())
+          .filter(Boolean)
+      )].sort();
 
-      const initialEdges = gotras.map((g) => ({
-        id: `e-${ROOT_ID}-gotra-${g.id}`,
+      const initialNodes = [
+        {
+          id: ROOT_ID,
+          type: 'root',
+          data: { label: 'Bhavana Rishi' },
+          position: { x: 0, y: 0 },
+        },
+        ...alphabetGroups.map((char) => ({
+          id: `alpha-${char}`,
+          type: 'alphabet',
+          data: { label: char },
+          position: { x: 0, y: 0 },
+        }))
+      ];
+
+      const initialEdges = alphabetGroups.map((char) => ({
+        id: `e-${ROOT_ID}-alpha-${char}`,
         source: ROOT_ID,
-        target: `gotra-${g.id}`,
-        animated: true,
+        target: `alpha-${char}`,
+        type: 'smoothstep',
+        animated: false,
+        className: 'silk-thread',
+        style: { stroke: 'var(--silk-gold)', strokeWidth: 1.5 }
       }));
 
-      setNodes([rootNode, ...gotraNodes]);
-      setEdges(initialEdges);
+      const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(initialNodes, initialEdges);
+      setNodes(layoutedNodes);
+      setEdges(layoutedEdges);
+      
+      setTimeout(() => fitView({ padding: 0.2 }), 200);
     };
 
     fetchInitialData();
-  }, []);
+  }, [fitView, setNodes, setEdges]);
 
-  // Physics simulation (Hierarchical Tree)
-  const simulation = useMemo(() => {
-    return d3.forceSimulation()
-      .force('link', d3.forceLink().id(d => d.id).distance(200).strength(1))
-      .force('charge', d3.forceManyBody().strength(-1000))
-      .force('x', d3.forceX().strength(0.1))
-      .force('y', d3.forceY(d => {
-        if (d.id === ROOT_ID) return -400;
-        if (d.id.startsWith('gotra-')) return 0;
-        return 400;
-      }).strength(0.5))
-      .force('collide', d3.forceCollide().radius(120));
-  }, []);
+  const expandAlphabet = useCallback((char) => {
+    const alphaNodeId = `alpha-${char}`;
+    
+    // Use functional updates to get latest state
+    setNodes((currentNodes) => {
+      const alphaNode = currentNodes.find(n => n.id === alphaNodeId);
+      if (!alphaNode || alphaNode.data.expanded) return currentNodes;
 
-  useEffect(() => {
-    if (nodes.length === 0) return;
+      setEdges((currentEdges) => {
+        const matchingGotras = allGotras.filter(g => g.name?.[0]?.toUpperCase() === char);
+        
+        const newNodes = matchingGotras.map((g) => ({
+          id: `gotra-${g.id}`,
+          type: 'gotra',
+          data: { label: g.name, gotraId: g.id },
+          position: { x: alphaNode.position.x, y: alphaNode.position.y },
+        }));
 
-    const d3Nodes = nodes.map(n => ({ ...n }));
-    const d3Edges = edges.map(e => ({ source: e.source, target: e.target }));
+        const newEdges = matchingGotras.map((g) => ({
+          id: `e-${alphaNodeId}-gotra-${g.id}`,
+          source: alphaNodeId,
+          target: `gotra-${g.id}`,
+          type: 'smoothstep',
+          className: 'silk-thread',
+          style: { stroke: 'var(--silk-gold)', strokeWidth: 1.5 }
+        }));
 
-    simulation.nodes(d3Nodes);
-    simulation.force('link').links(d3Edges);
+        const intermediateNodes = [
+          ...currentNodes.map(n => n.id === alphaNodeId ? { ...n, data: { ...n.data, expanded: true } } : n),
+          ...newNodes
+        ];
+        const intermediateEdges = [...currentEdges, ...newEdges];
 
-    simulation.on('tick', () => {
-      setNodes((nds) => 
-        nds.map((node) => {
-          const d3Node = d3Nodes.find(d => d.id === node.id);
-          if (d3Node) {
-            return { ...node, position: { x: d3Node.x, y: d3Node.y } };
-          }
-          return node;
-        })
-      );
+        const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(intermediateNodes, intermediateEdges);
+        
+        // This is still slightly tricky because we need to update both.
+        // The safest way in React Flow for complex layouts is to update them together.
+        setTimeout(() => {
+          setNodes(layoutedNodes);
+          setEdges(layoutedEdges);
+        }, 0);
+
+        return currentEdges; // return existing for now, the timeout will fix it
+      });
+      return currentNodes;
     });
-
-    simulation.alpha(0.3).restart();
-    return () => simulation.on('tick', null);
-  }, [nodes.length, edges.length]);
+  }, [allGotras, setNodes, setEdges]);
 
   const expandGotra = useCallback(async (gotraId, gotraNodeId) => {
     const { data: surnames, error } = await supabase
@@ -108,84 +173,144 @@ const FamilyMapContent = () => {
       .select('*')
       .eq('gotra_id', gotraId);
 
-    if (error) return [];
-    
-    // Filter out already existing nodes/edges
-    setNodes((nds) => {
-      const existingIds = new Set(nds.map(n => n.id));
-      const newNodes = (surnames || [])
-        .filter(s => !existingIds.has(`surname-${s.id}`))
-        .map((s) => ({
+    if (error || !surnames) return [];
+
+    setNodes((currentNodes) => {
+      const gotraNode = currentNodes.find(n => n.id === gotraNodeId);
+      if (!gotraNode || gotraNode.data.expanded) return currentNodes;
+
+      setEdges((currentEdges) => {
+        const newNodes = surnames.map((s) => ({
           id: `surname-${s.id}`,
           type: 'surname',
           data: { label: s.name },
-          position: { x: nds.find(n => n.id === gotraNodeId)?.position.x || 0, y: 400 },
+          position: { x: gotraNode.position.x, y: gotraNode.position.y },
         }));
-      return [...nds, ...newNodes];
-    });
 
-    setEdges((eds) => {
-      const existingIds = new Set(eds.map(e => e.id));
-      const newEdges = (surnames || [])
-        .filter(s => !existingIds.has(`e-${gotraNodeId}-surname-${s.id}`))
-        .map((s) => ({
+        const newEdges = surnames.map((s) => ({
           id: `e-${gotraNodeId}-surname-${s.id}`,
           source: gotraNodeId,
           target: `surname-${s.id}`,
+          type: 'smoothstep',
+          className: 'silk-thread',
+          style: { stroke: 'var(--silk-gold)', strokeWidth: 1 }
         }));
-      return [...eds, ...newEdges];
+
+        const intermediateNodes = [
+          ...currentNodes.map(n => n.id === gotraNodeId ? { ...n, data: { ...n.data, expanded: true } } : n),
+          ...newNodes
+        ];
+        const intermediateEdges = [...currentEdges, ...newEdges];
+
+        const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(intermediateNodes, intermediateEdges);
+        
+        setTimeout(() => {
+          setNodes(layoutedNodes);
+          setEdges(layoutedEdges);
+        }, 0);
+
+        return currentEdges;
+      });
+      return currentNodes;
     });
 
-    return surnames || [];
+    return surnames;
   }, [setNodes, setEdges]);
 
   const onSearchResultSelect = useCallback(async (item) => {
+    console.log('Search item selected:', item);
     if (item.type === 'gotra') {
-      const nodeId = `gotra-${item.id}`;
-      const node = nodes.find(n => n.id === nodeId);
-      if (node) {
-        setCenter(node.position.x, node.position.y, { zoom: 1.2, duration: 1000 });
-        setSelectedNode(node);
-        const surnames = await expandGotra(item.id, nodeId);
-        setSidebarSurnames(surnames);
-      }
-    } else if (item.type === 'surname') {
-      const gotraId = item.gotra_id;
-      const gotraNodeId = `gotra-${gotraId}`;
+      const char = item.name[0].toUpperCase();
+      expandAlphabet(char);
       
-      // Ensure gotra node is clicked/expanded
-      const surnames = await expandGotra(gotraId, gotraNodeId);
-      setSidebarSurnames(surnames);
-      
-      // Wait a bit for nodes to be added to state and simulation to place them
+      // Give more time for Dagre to finish and React to commit
       setTimeout(() => {
-        const surnameId = `surname-${item.id}`;
-        // We might not have the surname node in the current 'nodes' state yet because of async setNodes
-        // but it will be there on next render.
         setNodes(nds => {
-          const sNode = nds.find(n => n.id === surnameId);
-          if (sNode) {
-            setCenter(sNode.position.x, sNode.position.y, { zoom: 1.5, duration: 1000 });
-            setSelectedNode(sNode);
+          const gNodeId = `gotra-${item.id}`;
+          const gNode = nds.find(n => n.id === gNodeId);
+          console.log('Searching for gNode:', gNodeId, !!gNode);
+          if (gNode) {
+            setCenter(gNode.position.x + 80, gNode.position.y + 35, { zoom: 1.5, duration: 1000 });
+            setSelectedNode(gNode);
+            expandGotra(item.id, gNodeId).then(surnames => setSidebarSurnames(surnames));
           }
           return nds;
         });
-      }, 500);
+      }, 800);
+    } else if (item.type === 'surname') {
+      const { data: gotra } = await supabase.from('gotras').select('name').eq('id', item.gotra_id).single();
+      if (gotra) {
+        const char = gotra.name[0].toUpperCase();
+        const gotraNodeId = `gotra-${item.gotra_id}`;
+        
+        expandAlphabet(char);
+        setTimeout(async () => {
+          const surnames = await expandGotra(item.gotra_id, gotraNodeId);
+          setSidebarSurnames(surnames);
+          
+          setTimeout(() => {
+            setNodes(nds => {
+              const sNodeId = `surname-${item.id}`;
+              const sNode = nds.find(n => n.id === sNodeId);
+              console.log('Searching for sNode:', sNodeId, !!sNode);
+              if (sNode) {
+                setCenter(sNode.position.x + 80, sNode.position.y + 25, { zoom: 1.8, duration: 1000 });
+                setSelectedNode(sNode);
+              }
+              return nds;
+            });
+          }, 800);
+        }, 800);
+      }
     }
-  }, [nodes, setCenter, expandGotra]);
+  }, [expandAlphabet, expandGotra, setCenter, setNodes]);
 
   const onNodeClick = useCallback(async (event, node) => {
     setSelectedNode(node);
-    if (node.id.startsWith('gotra-')) {
+    if (node.id.startsWith('alpha-')) {
+      const char = node.data.label;
+      expandAlphabet(char);
+      const matchingGotras = allGotras.filter(g => g.name[0].toUpperCase() === char);
+      setSidebarSurnames(matchingGotras.map(g => ({ name: g.name, id: g.id })));
+    } else if (node.id.startsWith('gotra-')) {
       const surnames = await expandGotra(node.data.gotraId, node.id);
       setSidebarSurnames(surnames);
-    } else if (node.id.startsWith('surname-')) {
-        // Find parent gotra to show in sidebar context if needed
-        setSidebarSurnames([]);
     } else {
       setSidebarSurnames([]);
     }
-  }, [expandGotra]);
+  }, [expandAlphabet, expandGotra, allGotras]);
+
+  const onSidebarItemClick = useCallback(async (item) => {
+    if (selectedNode?.id?.startsWith('alpha-')) {
+      const char = selectedNode.data.label;
+      const nodeId = `gotra-${item.id}`;
+      expandAlphabet(char);
+
+      setTimeout(async () => {
+        setNodes(nds => {
+          const gNode = nds.find(n => n.id === nodeId);
+          console.log('Sidebar gotra jump:', nodeId, !!gNode);
+          if (gNode) {
+            setCenter(gNode.position.x + 80, gNode.position.y + 35, { zoom: 1.5, duration: 1000 });
+            setSelectedNode(gNode);
+            expandGotra(item.id, gNode.id).then(surnames => setSidebarSurnames(surnames));
+          }
+          return nds;
+        });
+      }, 800);
+    } else if (selectedNode?.id?.startsWith('gotra-')) {
+      const sNodeId = `surname-${item.id}`;
+      setNodes(nds => {
+        const sNode = nds.find(n => n.id === sNodeId);
+        if (sNode) {
+          setCenter(sNode.position.x + 80, sNode.position.y + 25, { zoom: 1.5, duration: 800 });
+          setSelectedNode(sNode);
+          setSidebarSurnames([]);
+        }
+        return nds;
+      });
+    }
+  }, [selectedNode, expandAlphabet, expandGotra, setCenter, setNodes]);
 
   return (
     <div style={{ width: '100%', height: '100%', position: 'relative' }}>
@@ -199,9 +324,10 @@ const FamilyMapContent = () => {
         onEdgesChange={onEdgesChange}
         onNodeClick={onNodeClick}
         onPaneClick={() => setSelectedNode(null)}
+        nodesDraggable={false}
+        nodesConnectable={false}
+        elementsSelectable={true}
         fitView
-        minZoom={0.05}
-        maxZoom={4}
       >
         <Background color="rgba(255,255,255,0.05)" gap={20} />
         <Controls />
@@ -211,12 +337,12 @@ const FamilyMapContent = () => {
         selectedNode={selectedNode} 
         onClose={() => setSelectedNode(null)} 
         surnames={sidebarSurnames}
+        onItemClick={onSidebarItemClick}
       />
     </div>
   );
 };
 
-// Wrap with ReactFlowProvider to use useReactFlow hooks
 const FamilyMap = () => (
   <ReactFlowProvider>
     <FamilyMapContent />
