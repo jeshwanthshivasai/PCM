@@ -295,13 +295,13 @@ const FamilyMapContent = () => {
     }}>
       {/* Bento 1: Header/Branding */}
       <div className="window-pane bento-title" style={{ padding: '24px', position: 'relative' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div>
-            <h1 className="traditional-title" style={{ margin: 0, fontSize: '28px', color: 'var(--pasupu)' }}>
+        <div className="bento-title-inner" style={{ display: 'flex', alignItems: 'center' }}>
+          <div style={{ flex: 1 }}>
+            <h1 className="traditional-title" style={{ margin: 0, color: 'var(--pasupu)' }}>
               Padmasali Family Network
             </h1>
-            <p style={{ margin: '8px 0 0 0', color: 'var(--text-secondary)', fontSize: '14px', maxWidth: '600px' }}>
-              Sacred lineages and ancestral Gotras of the Padmasali weaving community.
+            <p style={{ margin: '8px 0 0 0', color: 'var(--text-secondary)' }}>
+              Sacred Lineages and Ancestral Gotras of the Padmasali Community.
             </p>
           </div>
         </div>

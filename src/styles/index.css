@@ -96,16 +96,44 @@ html, body, #root {
   .bento-sidebar {
     height: auto;
   }
+
+  /* Phase 10: Mobile Title Polish */
+  @media (max-width: 600px) {
+    .bento-title {
+      padding: 16px !important;
+      text-align: center;
+    }
+
+    .bento-title > div {
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .traditional-title {
+      font-size: 1.4rem !important;
+      white-space: nowrap;
+      width: 100%;
+    }
+
+    .bento-title p {
+      font-size: 12px !important;
+    }
+  }
 }
 
 .traditional-title {
   font-family: 'Outfit', serif;
   text-transform: uppercase;
   letter-spacing: 0.05em;
+  font-size: 28px;
   background: linear-gradient(135deg, var(--pasupu) 0%, var(--silk-gold) 100%);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
+}
+
+.bento-title p {
+  font-size: 14px;
 }
 
 /* Sidebar Specifics */
