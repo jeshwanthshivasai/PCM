@@ -122,12 +122,21 @@ const FamilyMapContent = () => {
   const expandAlphabet = useCallback((char) => {
     const alphaNodeId = `alpha-${char}`;
     
-    // Use functional updates to get latest state
     setNodes((currentNodes) => {
-      const alphaNode = currentNodes.find(n => n.id === alphaNodeId);
-      if (!alphaNode || alphaNode.data.expanded) return currentNodes;
+      // AUTO-COLLAPSE: Remove all gotras and surnames, reset all alphabets to closed
+      const baseNodes = currentNodes
+        .filter(n => n.id === ROOT_ID || n.id.startsWith('alpha-'))
+        .map(n => n.id.startsWith('alpha-') 
+          ? { ...n, data: { ...n.data, expanded: n.id === alphaNodeId } } 
+          : n);
+
+      const alphaNode = baseNodes.find(n => n.id === alphaNodeId);
+      if (!alphaNode) return currentNodes;
 
       setEdges((currentEdges) => {
+        // Clear all edges that aren't Root->Alphabet
+        const baseEdges = currentEdges.filter(e => e.source === ROOT_ID);
+        
         const matchingGotras = allGotras.filter(g => g.name?.[0]?.toUpperCase() === char);
         
         const newNodes = matchingGotras.map((g) => ({
@@ -146,26 +155,23 @@ const FamilyMapContent = () => {
           style: { stroke: 'var(--silk-gold)', strokeWidth: 1.5 }
         }));
 
-        const intermediateNodes = [
-          ...currentNodes.map(n => n.id === alphaNodeId ? { ...n, data: { ...n.data, expanded: true } } : n),
-          ...newNodes
-        ];
-        const intermediateEdges = [...currentEdges, ...newEdges];
+        const intermediateNodes = [...baseNodes, ...newNodes];
+        const intermediateEdges = [...baseEdges, ...newEdges];
 
         const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(intermediateNodes, intermediateEdges);
         
-        // This is still slightly tricky because we need to update both.
-        // The safest way in React Flow for complex layouts is to update them together.
         setTimeout(() => {
           setNodes(layoutedNodes);
           setEdges(layoutedEdges);
+          // Auto-focus on the expanded letter
+          setCenter(alphaNode.position.x + 25, alphaNode.position.y + 100, { zoom: 0.8, duration: 800 });
         }, 0);
 
-        return currentEdges; // return existing for now, the timeout will fix it
+        return currentEdges;
       });
       return currentNodes;
     });
-  }, [allGotras, setNodes, setEdges]);
+  }, [allGotras, setNodes, setEdges, setCenter]);
 
   const expandGotra = useCallback(async (gotraId, gotraNodeId) => {
     const { data: surnames, error } = await supabase
@@ -176,10 +182,20 @@ const FamilyMapContent = () => {
     if (error || !surnames) return [];
 
     setNodes((currentNodes) => {
-      const gotraNode = currentNodes.find(n => n.id === gotraNodeId);
-      if (!gotraNode || gotraNode.data.expanded) return currentNodes;
+      // AUTO-COLLAPSE: Remove other surnames, reset other gotras
+      const baseNodes = currentNodes
+        .filter(n => !n.id.startsWith('surname-'))
+        .map(n => n.id.startsWith('gotra-')
+          ? { ...n, data: { ...n.data, expanded: n.id === gotraNodeId } }
+          : n);
+
+      const gotraNode = baseNodes.find(n => n.id === gotraNodeId);
+      if (!gotraNode) return currentNodes;
 
       setEdges((currentEdges) => {
+        // Remove existing gotra->surname edges
+        const baseEdges = currentEdges.filter(e => !e.id.includes('surname-'));
+
         const newNodes = surnames.map((s) => ({
           id: `surname-${s.id}`,
           type: 'surname',
@@ -196,11 +212,8 @@ const FamilyMapContent = () => {
           style: { stroke: 'var(--silk-gold)', strokeWidth: 1 }
         }));
 
-        const intermediateNodes = [
-          ...currentNodes.map(n => n.id === gotraNodeId ? { ...n, data: { ...n.data, expanded: true } } : n),
-          ...newNodes
-        ];
-        const intermediateEdges = [...currentEdges, ...newEdges];
+        const intermediateNodes = [...baseNodes, ...newNodes];
+        const intermediateEdges = [...baseEdges, ...newEdges];
 
         const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(intermediateNodes, intermediateEdges);
         
@@ -313,32 +326,46 @@ const FamilyMapContent = () => {
   }, [selectedNode, expandAlphabet, expandGotra, setCenter, setNodes]);
 
   return (
-    <div style={{ width: '100%', height: '100%', position: 'relative' }}>
-      <SearchBar onSelect={onSearchResultSelect} />
-      
-      <ReactFlow
-        nodes={nodes}
-        edges={edges}
-        nodeTypes={nodeTypes}
-        onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
-        onNodeClick={onNodeClick}
-        onPaneClick={() => setSelectedNode(null)}
-        nodesDraggable={false}
-        nodesConnectable={false}
-        elementsSelectable={true}
-        fitView
-      >
-        <Background color="rgba(255,255,255,0.05)" gap={20} />
-        <Controls />
-      </ReactFlow>
+    <div style={{ width: '100%', height: '100%', display: 'flex', overflow: 'hidden' }}>
+      <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
+        <SearchBar onSelect={onSearchResultSelect} />
+        
+        <ReactFlow
+          nodes={nodes}
+          edges={edges}
+          nodeTypes={nodeTypes}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
+          onNodeClick={onNodeClick}
+          onPaneClick={() => setSelectedNode(null)}
+          nodesDraggable={false}
+          nodesConnectable={false}
+          elementsSelectable={true}
+          fitView
+          fitViewOptions={{ padding: 0.2 }}
+        >
+          <Background color="rgba(255,255,255,0.05)" gap={20} />
+          <Controls />
+        </ReactFlow>
+      </div>
 
-      <Sidebar 
-        selectedNode={selectedNode} 
-        onClose={() => setSelectedNode(null)} 
-        surnames={sidebarSurnames}
-        onItemClick={onSidebarItemClick}
-      />
+      {selectedNode && (
+        <div style={{ 
+          width: '380px', 
+          height: '100%', 
+          borderLeft: '1px solid rgba(212, 175, 55, 0.2)',
+          background: 'rgba(10, 8, 6, 0.95)',
+          zIndex: 100,
+          position: 'relative'
+        }}>
+          <Sidebar 
+            selectedNode={selectedNode} 
+            onClose={() => setSelectedNode(null)} 
+            surnames={sidebarSurnames}
+            onItemClick={onSidebarItemClick}
+          />
+        </div>
+      )}
     </div>
   );
 };

@@ -11,20 +11,15 @@ const Sidebar = ({ selectedNode, onClose, surnames = [], onItemClick }) => {
   const listTitle = isGotra ? `Associated Families (${surnames.length})` : isAlphabet ? `Sacred Lineages in Group ${selectedNode.data.label} (${surnames.length})` : '';
 
   return (
-    <div className="glass" style={{
-      position: 'absolute',
-      top: 24,
-      right: 24,
-      bottom: 24,
-      width: '340px',
-      borderRadius: '28px',
+    <div style={{
+      width: '100%',
+      height: '100%',
       padding: '32px',
-      zIndex: 100,
       display: 'flex',
       flexDirection: 'column',
       gap: '24px',
       color: 'var(--text-primary)',
-      border: '1.5px solid rgba(212, 175, 55, 0.3)'
+      overflowY: 'auto'
     }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--silk-gold)' }}>
