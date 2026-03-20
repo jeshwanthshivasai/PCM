@@ -60,8 +60,10 @@ const SearchBar = ({ onSelect }) => {
     <div ref={searchRef} style={{
       position: 'relative',
       zIndex: 200,
-      width: '400px',
-      pointerEvents: 'auto'
+      width: '100%',
+      maxWidth: '400px',
+      pointerEvents: 'auto',
+      boxSizing: 'border-box'
     }}>
       <div className="glass" style={{
         borderRadius: '20px',

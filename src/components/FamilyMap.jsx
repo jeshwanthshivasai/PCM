@@ -314,7 +314,11 @@ const FamilyMapContent = () => {
           position: 'absolute', 
           top: '20px', 
           right: '20px', 
-          zIndex: 1000 
+          left: '20px',
+          display: 'flex',
+          justifyContent: 'flex-end',
+          zIndex: 1000,
+          pointerEvents: 'none' // allow clicks through the container but the child has pointerEvents: auto
         }}>
           <SearchBar onSelect={onSearchResultSelect} />
         </div>
