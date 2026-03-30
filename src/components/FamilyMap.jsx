@@ -12,6 +12,8 @@ import { RootNode, GotraNode, SurnameNode, AlphabetNode } from './nodes/CustomNo
 import Sidebar from './Sidebar';
 import SearchBar from './SearchBar';
 import SilkEdge from './edges/SilkEdge';
+import OnboardingModal from './OnboardingModal';
+import { HelpCircle } from 'lucide-react';
 
 const ROOT_ID = 'root-bhavana-rishi';
 
@@ -33,8 +35,22 @@ const FamilyMapContent = () => {
   const [selectedNode, setSelectedNode] = useState(null);
   const [expandedAlpha, setExpandedAlpha] = useState(null);
   const [expandedGotra, setExpandedGotra] = useState(null);
+  const [showOnboarding, setShowOnboarding] = useState(false);
   
   const { setCenter, fitView } = useReactFlow();
+
+  // Check Onboarding
+  useEffect(() => {
+    const hasSeen = localStorage.getItem('pcm-onboarding-seen');
+    if (!hasSeen) {
+      setShowOnboarding(true);
+    }
+  }, []);
+
+  const handleCloseOnboarding = () => {
+    setShowOnboarding(false);
+    localStorage.setItem('pcm-onboarding-seen', 'true');
+  };
 
   // Load Initial Data
   useEffect(() => {
@@ -304,6 +320,25 @@ const FamilyMapContent = () => {
               Sacred Lineages and Ancestral Gotras of the Padmasali Community.
             </p>
           </div>
+          <button 
+            onClick={() => setShowOnboarding(true)}
+            style={{
+              background: 'rgba(212, 175, 55, 0.1)',
+              border: '1px solid rgba(212, 175, 55, 0.2)',
+              borderRadius: '50%',
+              width: '40px',
+              height: '40px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: 'var(--silk-gold)',
+              cursor: 'pointer',
+              transition: 'all 0.3s'
+            }}
+            className="help-btn"
+          >
+            <HelpCircle size={20} />
+          </button>
         </div>
       </div>
 
@@ -359,6 +394,11 @@ const FamilyMapContent = () => {
           }}
         />
       </div>
+
+      <OnboardingModal 
+        isOpen={showOnboarding} 
+        onClose={handleCloseOnboarding} 
+      />
     </div>
   );
 };
