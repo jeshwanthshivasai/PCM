@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Search, MapPin, Users, X, Loader2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { supabase } from '../lib/supabase';
 
 const SearchBar = ({ onSelect }) => {
+  const { t } = useTranslation();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -80,7 +82,7 @@ const SearchBar = ({ onSelect }) => {
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search Gotras or Surnames..."
+          placeholder={t('search.placeholder')}
           style={{
             background: 'transparent',
             border: 'none',
@@ -142,7 +144,7 @@ const SearchBar = ({ onSelect }) => {
               {item.type === 'gotra' ? <Users size={18} color="#00d4ff" /> : <MapPin size={18} color="white" opacity={0.5} />}
               <div style={{ display: 'flex', flexDirection: 'column' }}>
                 <span style={{ fontWeight: 600 }}>{item.name}</span>
-                <span style={{ fontSize: '11px', opacity: 0.5, uppercase: true }}>{item.type}</span>
+                <span style={{ fontSize: '11px', opacity: 0.5, uppercase: true }}>{t(`search.${item.type}`)}</span>
               </div>
             </button>
           ))}

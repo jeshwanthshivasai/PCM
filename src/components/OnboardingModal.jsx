@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { 
   X, 
   ChevronRight, 
@@ -9,39 +9,41 @@ import {
   BookOpen,
   ArrowRight
 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 const OnboardingModal = ({ isOpen, onClose }) => {
   const [step, setStep] = useState(0);
+  const { t } = useTranslation();
 
   const steps = [
     {
-      title: "Ancient Roots",
-      subtitle: "Welcome to the Padmasali Family Network",
-      content: "This interactive map traces the sacred lineages and ancestral Gotras of our community, starting from the Mula Purusha, Bhavana Rishi.",
+      title: t('onboarding.step0.title'),
+      subtitle: t('onboarding.step0.subtitle'),
+      content: t('onboarding.step0.content'),
       icon: <BookOpen size={48} color="var(--silk-gold)" />,
     },
     {
-      title: "Navigating the Lineage",
-      subtitle: "How the tree grows",
-      content: "Lineages are grouped alphabetically. Click an alphabet to see associated Gotras, then click a Gotra to reveal its Surnames.",
+      title: t('onboarding.step1.title'),
+      subtitle: t('onboarding.step1.subtitle'),
+      content: t('onboarding.step1.content'),
       icon: <Users size={48} color="var(--silk-gold)" />,
     },
     {
-      title: "Advanced Search",
-      subtitle: "Find your specific heritage",
-      content: "Use the floating search bar at the top right to instantly find specific Gotras or Surnames across the entire network.",
+      title: t('onboarding.step2.title'),
+      subtitle: t('onboarding.step2.subtitle'),
+      content: t('onboarding.step2.content'),
       icon: <Search size={48} color="var(--silk-gold)" />,
     },
     {
-      title: "Interactive Map",
-      subtitle: "Explore with ease",
-      content: "Use your mouse or touch to pan across the history. Scroll to zoom in on specific details. Double-click the map to reset the view.",
+      title: t('onboarding.step3.title'),
+      subtitle: t('onboarding.step3.subtitle'),
+      content: t('onboarding.step3.content'),
       icon: <MousePointer2 size={48} color="var(--silk-gold)" />,
     },
     {
-      title: "Begin Your Journey",
-      subtitle: "Discover your connections",
-      content: "Your ancestral history is now at your fingertips. Start exploring the threads that connect us all.",
+      title: t('onboarding.step4.title'),
+      subtitle: t('onboarding.step4.subtitle'),
+      content: t('onboarding.step4.content'),
       icon: <ArrowRight size={48} color="var(--silk-gold)" />,
       isFinal: true
     }
@@ -128,17 +130,17 @@ const OnboardingModal = ({ isOpen, onClose }) => {
             <div style={{ display: 'flex', gap: '12px' }}>
               {step > 0 && (
                 <button className="gold-btn-outline" onClick={() => setStep(step - 1)}>
-                  <ChevronLeft size={20} />
+                  {t('onboarding.previous')}
                 </button>
               )}
               
               {currentStep.isFinal ? (
                 <button className="gold-btn" onClick={onClose}>
-                  Get Started
+                  {t('onboarding.get_started')}
                 </button>
               ) : (
                 <button className="gold-btn" onClick={() => setStep(step + 1)}>
-                  <ChevronRight size={20} />
+                  {t('onboarding.next')}
                 </button>
               )}
             </div>

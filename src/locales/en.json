@@ -1,0 +1,56 @@
+{
+  "header": {
+    "title": "Padmasali Family Network",
+    "description": "Sacred Lineages and Ancestral Gotras of the Padmasali Community."
+  },
+  "nodes": {
+    "mula_purusha": "MULA PURUSHA",
+    "gotram": "GOTRAM",
+    "surname": "SURNAME",
+    "gotra_count": "{{count}} Gotras",
+    "surname_count": "{{count}} Surnames"
+  },
+  "sidebar": {
+    "lineage_groups": "Lineage Groups",
+    "alphabet_label": "Alphabet {{char}}",
+    "ancestral_surnames": "Ancestral Surnames in {{gotra}}",
+    "loading": "Loading...",
+    "no_records": "No records found.",
+    "back": "Back"
+  },
+  "search": {
+    "placeholder": "Search Gotras or Surnames...",
+    "gotra": "gotra",
+    "surname": "surname"
+  },
+  "onboarding": {
+    "step0": {
+      "title": "Ancient Roots",
+      "subtitle": "Welcome to the Padmasali Family Network",
+      "content": "This interactive map traces the sacred lineages and ancestral Gotras of our community, starting from the Mula Purusha, Bhavana Rishi."
+    },
+    "step1": {
+      "title": "Navigating the Lineage",
+      "subtitle": "How the tree grows",
+      "content": "Lineages are grouped alphabetically. Click an alphabet to see associated Gotras, then click a Gotra to reveal its Surnames."
+    },
+    "step2": {
+      "title": "Advanced Search",
+      "subtitle": "Find your specific heritage",
+      "content": "Use the floating search bar at the top right to instantly find specific Gotras or Surnames across the entire network."
+    },
+    "step3": {
+      "title": "Interactive Map",
+      "subtitle": "Explore with ease",
+      "content": "Use your mouse or touch to pan across the history. Scroll to zoom in on specific details. Double-click the map to reset the view."
+    },
+    "step4": {
+      "title": "Begin Your Journey",
+      "subtitle": "Discover your connections",
+      "content": "Your ancestral history is now at your fingertips. Start exploring the threads that connect us all."
+    },
+    "get_started": "Get Started",
+    "next": "Next",
+    "previous": "Back"
+  }
+}

@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { X, ChevronRight, ChevronLeft, Users, Library, ScrollText } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { supabase } from '../lib/supabase';
 
 const Sidebar = ({ selectedNode, allGotras = [], expandedAlpha, expandedGotra, onNavigate, onClose }) => {
+  const { t } = useTranslation();
   const [view, setView] = useState('alphabet'); // 'alphabet' | 'gotras' | 'surnames'
   const [currentAlphabet, setCurrentAlphabet] = useState(null);
   const [currentGotra, setCurrentGotra] = useState(null);
@@ -108,7 +110,7 @@ const Sidebar = ({ selectedNode, allGotras = [], expandedAlpha, expandedGotra, o
             color: 'var(--silk-gold)',
             opacity: 0.8
           }}>
-            {view === 'alphabet' ? 'Lineage Groups' : view === 'gotras' ? `Alphabet ${currentAlphabet}` : currentGotra?.name}
+            {view === 'alphabet' ? t('sidebar.lineage_groups') : view === 'gotras' ? t('sidebar.alphabet_label', { char: currentAlphabet }) : currentGotra?.name}
           </span>
         </div>
         <button onClick={onClose} style={{
@@ -191,10 +193,10 @@ const Sidebar = ({ selectedNode, allGotras = [], expandedAlpha, expandedGotra, o
               gap: '8px'
             }}>
               <ScrollText size={14} />
-              <span>Ancestral Surnames in {currentGotra?.name}</span>
+              <span>{t('sidebar.ancestral_surnames', { gotra: currentGotra?.name })}</span>
             </div>
             {loading ? (
-              <div style={{ textAlign: 'center', opacity: 0.5, marginTop: '40px' }}>Loading...</div>
+              <div style={{ textAlign: 'center', opacity: 0.5, marginTop: '40px' }}>{t('sidebar.loading')}</div>
             ) : (
               surnames.map(s => (
                 <div
@@ -212,7 +214,7 @@ const Sidebar = ({ selectedNode, allGotras = [], expandedAlpha, expandedGotra, o
               ))
             )}
             {!loading && surnames.length === 0 && (
-              <div style={{ textAlign: 'center', opacity: 0.5, marginTop: '40px' }}>No records found.</div>
+              <div style={{ textAlign: 'center', opacity: 0.5, marginTop: '40px' }}>{t('sidebar.no_records')}</div>
             )}
           </div>
         )}

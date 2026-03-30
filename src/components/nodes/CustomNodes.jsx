@@ -1,8 +1,10 @@
 import React, { memo } from 'react';
 import { Handle, Position } from 'reactflow';
 import { User } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 export const RootNode = memo(({ data }) => {
+  const { t } = useTranslation();
   return (
     <div className="custom-node-container node-pulse" style={{ 
       background: 'var(--kumkum)',
@@ -12,13 +14,14 @@ export const RootNode = memo(({ data }) => {
     }}>
       <User size={28} color="var(--silk-gold)" strokeWidth={2.5} />
       <div style={{ color: 'white', fontWeight: 800, fontSize: '18px', letterSpacing: '0.05em' }}>{data.label}</div>
-      <div style={{ color: 'var(--pasupu)', fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em' }}>MULA PURUSHA</div>
+      <div style={{ color: 'var(--pasupu)', fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em' }}>{t('nodes.mula_purusha')}</div>
       <Handle type="source" position={Position.Bottom} style={{ opacity: 0 }} />
     </div>
   );
 });
 
 export const GotraNode = memo(({ data }) => {
+  const { t } = useTranslation();
   return (
     <div className="custom-node-container glass" style={{ 
       borderColor: 'var(--silk-gold)',
@@ -26,7 +29,7 @@ export const GotraNode = memo(({ data }) => {
       borderWidth: '1px',
       background: 'rgba(139, 0, 0, 0.1)'
     }}>
-      <div style={{ color: 'var(--pasupu)', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em' }}>GOTRAM</div>
+      <div style={{ color: 'var(--pasupu)', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em' }}>{t('nodes.gotram')}</div>
       <div style={{ color: 'white', fontWeight: 600, fontSize: '14px' }}>{data.label}</div>
       <Handle type="target" position={Position.Top} style={{ opacity: 0 }} />
       <Handle type="source" position={Position.Bottom} style={{ opacity: 0 }} />

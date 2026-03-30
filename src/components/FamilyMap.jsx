@@ -13,7 +13,8 @@ import Sidebar from './Sidebar';
 import SearchBar from './SearchBar';
 import SilkEdge from './edges/SilkEdge';
 import OnboardingModal from './OnboardingModal';
-import { HelpCircle } from 'lucide-react';
+import { HelpCircle, Languages } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 const ROOT_ID = 'root-bhavana-rishi';
 
@@ -36,8 +37,14 @@ const FamilyMapContent = () => {
   const [expandedAlpha, setExpandedAlpha] = useState(null);
   const [expandedGotra, setExpandedGotra] = useState(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const { t, i18n } = useTranslation();
   
   const { setCenter, fitView } = useReactFlow();
+
+  const toggleLanguage = () => {
+    const nextLng = i18n.language === 'en' ? 'te' : 'en';
+    i18n.changeLanguage(nextLng);
+  };
 
   // Check Onboarding
   useEffect(() => {
@@ -314,31 +321,55 @@ const FamilyMapContent = () => {
         <div className="bento-title-inner" style={{ display: 'flex', alignItems: 'center' }}>
           <div style={{ flex: 1 }}>
             <h1 className="traditional-title" style={{ margin: 0, color: 'var(--pasupu)' }}>
-              Padmasali Family Network
+              {t('header.title')}
             </h1>
             <p style={{ margin: '8px 0 0 0', color: 'var(--text-secondary)' }}>
-              Sacred Lineages and Ancestral Gotras of the Padmasali Community.
+              {t('header.description')}
             </p>
           </div>
-          <button 
-            onClick={() => setShowOnboarding(true)}
-            style={{
-              background: 'rgba(212, 175, 55, 0.1)',
-              border: '1px solid rgba(212, 175, 55, 0.2)',
-              borderRadius: '50%',
-              width: '40px',
-              height: '40px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: 'var(--silk-gold)',
-              cursor: 'pointer',
-              transition: 'all 0.3s'
-            }}
-            className="help-btn"
-          >
-            <HelpCircle size={20} />
-          </button>
+          <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+            <button 
+              onClick={toggleLanguage}
+              style={{
+                background: 'rgba(212, 175, 55, 0.1)',
+                border: '1px solid rgba(212, 175, 55, 0.2)',
+                borderRadius: '12px',
+                padding: '0 12px',
+                height: '40px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                color: 'var(--silk-gold)',
+                cursor: 'pointer',
+                fontSize: '13px',
+                fontWeight: 600,
+                transition: 'all 0.3s'
+              }}
+              className="lang-toggle-btn"
+            >
+              <Languages size={18} />
+              <span>{i18n.language === 'en' ? 'తెలుగు' : 'English'}</span>
+            </button>
+            <button 
+              onClick={() => setShowOnboarding(true)}
+              style={{
+                background: 'rgba(212, 175, 55, 0.1)',
+                border: '1px solid rgba(212, 175, 55, 0.2)',
+                borderRadius: '50%',
+                width: '40px',
+                height: '40px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'var(--silk-gold)',
+                cursor: 'pointer',
+                transition: 'all 0.3s'
+              }}
+              className="help-btn"
+            >
+              <HelpCircle size={20} />
+            </button>
+          </div>
         </div>
       </div>
 

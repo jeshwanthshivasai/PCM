@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=Hind+Guntur:wght@300;400;600;700&display=swap');
 @import 'reactflow/dist/style.css';
 
 :root {
@@ -24,7 +24,7 @@ html, body, #root {
   background-size: 400px;
   background-repeat: repeat;
   color: var(--text-primary);
-  font-family: 'Outfit', sans-serif;
+  font-family: 'Outfit', 'Hind Guntur', sans-serif;
   letter-spacing: 0.01em;
 }
 
