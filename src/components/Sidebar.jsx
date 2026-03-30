@@ -75,7 +75,7 @@ const Sidebar = ({ selectedNode, allGotras = [], expandedAlpha, expandedGotra, o
       height: '100%',
       display: 'flex',
       flexDirection: 'column',
-      background: 'url("/silk_texture_dark.png") repeat',
+      background: 'url("/weaver_pattern.png") repeat',
       backgroundSize: '200px',
     }}>
       {/* Sidebar Header */}
