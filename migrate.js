@@ -1,9 +1,26 @@
 const fs = require('fs');
 const { createClient } = require('@supabase/supabase-js');
 
+// Load environment variables from .env
+function loadEnv() {
+  const path = require('path');
+  const envPath = path.join(__dirname, '.env');
+  if (fs.existsSync(envPath)) {
+    const envContent = fs.readFileSync(envPath, 'utf8');
+    envContent.split('\n').forEach(line => {
+      const [key, ...value] = line.split('=');
+      if (key && value.length > 0) {
+        process.env[key.trim()] = value.join('=').trim();
+      }
+    });
+  }
+}
+
+loadEnv();
+
 // Constants
-const SUPABASE_URL = 'https://nopfkuiufaxxrhlvijht.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5vcGZrdWl1ZmF4eHJobHZpamh0Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MzgxNjQ3NywiZXhwIjoyMDg5MzkyNDc3fQ.36oN6x-xc2K84-js0xxeu45-foWa_iXmrlzoHLvXi0g';
+const SUPABASE_URL = process.env.VITE_SUPABASE_URL;
+const SUPABASE_KEY = process.env.VITE_SUPABASE_ANON_KEY;
 const RAW_DATA_PATH = './raw_data.txt';
 
 async function migrate() {
